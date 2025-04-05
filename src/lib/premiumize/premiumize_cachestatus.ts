@@ -17,7 +17,7 @@ export async function checkPremiumizeCacheBulk( // Export directly
     console.log(`[Premiumize] Bulk checking cache for ${infoHashes.length} info_hashes.`);
     const itemsQuery = infoHashes.map(hash => `items[]=${hash}`).join('&');
     const apiUrl = `https://premiumize.me/api/cache/check?apikey=${apiKey}&${itemsQuery}`;
-    console.log(`[Premiumize Debug] Calling Cache Check API URL: ${apiUrl}`); // DEBUG LOG
+   
 
     const results: Record<string, PremiumizeCacheStatus> = {};
     infoHashes.forEach(hash => results[hash] = { isCached: false, filename: null });

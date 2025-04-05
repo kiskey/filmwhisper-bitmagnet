@@ -288,12 +288,12 @@ Deno.test("createStreamsFromTorrents - No Premiumize Key", async () => {
     try {
         const streams = await createStreamsFromTorrents(searchResults, MOCK_PARSED_MOVIE_ID);
         assertEquals(streams.length, 2);
-        assertEquals(streams[0].name, "[FW] Bitmagnet");
+        assertEquals(streams[0].name, "[TORRENT] FW Bitmagnet");
         assertEquals(streams[0].infoHash, "pmmiss");
         assertEquals(streams[0].title, "PM Miss Torrent\n💾 2000 B | 👤 15 | 📺 1080p | 🗣️ es");
         assertEquals(streams[0].fileIdx, undefined);
         assertEquals(streams[0].sources?.includes("tracker:udp://tracker1"), true);
-        assertEquals(streams[1].name, "[FW] Bitmagnet");
+        assertEquals(streams[1].name, "[TORRENT] FW Bitmagnet");
         assertEquals(streams[1].infoHash, "seriesfile");
         assertEquals(streams[1].title, "Series File Torrent\n💾 1500 B | 👤 8 | 📺 1080p");
         assertEquals(streams[1].fileIdx, undefined);
@@ -338,14 +338,14 @@ Deno.test("createStreamsFromTorrents - Premiumize Hit, DirectDL Success", async 
         assertEquals(streams.length, 2);
 
         // Premiumize Stream
-        assertEquals(streams[0].name, "[PM] FW:Bitmagnet");
+        assertEquals(streams[0].name, "[PM] FW Bitmagnet");
         assertEquals(streams[0].url, "http://direct.link/pmhit.mkv");
         assertEquals(streams[0].title, "pmhit.mkv\n💾 1000 B | ⚡ Premiumize | 📺 1080p | 🗣️ en");
         assertEquals(streams[0].behaviorHints?.bingeGroup, "premiumize-pmhit");
         assertEquals(streams[0].infoHash, undefined);
 
         // Fallback Stream
-        assertEquals(streams[1].name, "[FW] Bitmagnet");
+        assertEquals(streams[1].name, "[TORRENT] FW Bitmagnet");
         assertEquals(streams[1].infoHash, "pmmiss");
         assertEquals(streams[1].title, "PM Miss Torrent\n💾 2000 B | 👤 15 | 📺 1080p | 🗣️ es");
 
@@ -382,7 +382,7 @@ Deno.test("createStreamsFromTorrents - Premiumize Hit, DirectDL Fails (Fallback)
     try {
         const streams = await createStreamsFromTorrents(searchResults, MOCK_PARSED_MOVIE_ID);
         assertEquals(streams.length, 1);
-        assertEquals(streams[0].name, "[FW] Bitmagnet");
+        assertEquals(streams[0].name, "[TORRENT] FW Bitmagnet");
         assertEquals(streams[0].infoHash, "pmhit");
         assertEquals(streams[0].title, "PM Hit Torrent\n💾 1000 B | 👤 20 | 📺 1080p | 🗣️ en");
         assertEquals(getDirectLinkStub.calls.length, 1);
@@ -416,7 +416,7 @@ Deno.test("createStreamsFromTorrents - Series Episode File Index", async () => {
     try {
         const streams = await createStreamsFromTorrents(searchResults, MOCK_PARSED_SERIES_ID);
         assertEquals(streams.length, 1);
-        assertEquals(streams[0].name, "[FW] Bitmagnet");
+        assertEquals(streams[0].name, "[TORRENT] FW Bitmagnet");
         assertEquals(streams[0].infoHash, "seriesfile");
         assertEquals(streams[0].fileIdx, 0);
     } finally {

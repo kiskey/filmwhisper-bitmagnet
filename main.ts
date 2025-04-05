@@ -1,15 +1,15 @@
-import { addonBuilder, serveHTTP, Stream } from './deps.ts';
+import { addonBuilder, serveHTTP, Stream } from './src/deps.ts';
 import "https://deno.land/std@0.219.0/dotenv/load.ts"; 
 
-import { parseStremioId, fetchAndSearchTorrents, createStreamsFromTorrents } from './lib/stremio_helpers.ts';
+import { parseStremioId, fetchAndSearchTorrents, createStreamsFromTorrents } from './src/lib/stremio_helpers.ts';
 
 const TMDB_API_KEY = Deno.env.get('TMDB_API_KEY');
 if (!TMDB_API_KEY) console.warn("TMDB_API_KEY environment variable not set. Title/Year lookup will be skipped.");
 
 const builder = new addonBuilder({
-    id: 'org.filmwhisper.bitmagnet',
+    id: 'org.stremio.bitmagnet',
     version: '1.0.0',
-    name: 'FilmWhisper: Bitmagnet',
+    name: 'FW:Bitmagnet',
     description: 'Provides movie and series streams from a Bitmagnet instance',
     catalogs: [],
     resources: ['stream'],

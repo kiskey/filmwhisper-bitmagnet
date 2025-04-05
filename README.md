@@ -32,6 +32,9 @@ Then, edit the `.env` file with your specific values:
 *   `BITMAGNET_URL`: The full URL to your Bitmagnet instance's GraphQL API (e.g., `http://your-bitmagnet-ip:3333`).
 *   `BITMAGNET_TIMEOUT`: Timeout in seconds for requests to Bitmagnet (default: 30). Increase if your Bitmagnet instance is slow.
 *   `TMDB_API_KEY`: Your TMDB API key (v3). Required for reliable title/year lookup.
+*   `BITMAGNET_SORT_FIELD`: (Optional) Field to sort Bitmagnet search results by. Defaults to `Seeders`. Valid options: `Relevance`, `PublishedAt`, `UpdatedAt`, `Size`, `Files`, `Seeders`, `Leechers`, `Name`, `InfoHash`.
+*   `BITMAGNET_SORT_DESCENDING`: (Optional) Set to `true` (default) or `false` to control the sort direction for `BITMAGNET_SORT_FIELD`.
+*   `BITMAGNET_SEARCH_LIMIT`: (Optional) Maximum number of results to fetch from Bitmagnet per search (default: 20).
 *   `PREMIUMIZE_API_KEY`: Your Premiumize API key.
 
 ## Usage in Stremio

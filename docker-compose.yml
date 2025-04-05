@@ -25,9 +25,9 @@ services:
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=postgres
-    #  - TMDB_API_KEY=your_api_key
+      - TMDB_API_KEY=key_here
     volumes:
-      - ./config:/root/.config/bitmagnet
+      - bitmagnet_config:/root/.config/bitmagnet
     command:
       - worker
       - run
@@ -43,9 +43,9 @@ services:
     image: postgres:16-alpine
     container_name: bitmagnet-postgres
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
-    #    ports:
-    #      - "5432:5432" Expose this port if you'd like to dig around in the database
+      - postgres_data:/var/lib/postgresql/data
+    #ports:
+    #  - "5433:5432" 
     restart: unless-stopped
     environment:
       - POSTGRES_PASSWORD=postgres
@@ -58,3 +58,7 @@ services:
         - pg_isready
       start_period: 20s
       interval: 10s
+
+volumes:
+  bitmagnet_config:
+  postgres_data:

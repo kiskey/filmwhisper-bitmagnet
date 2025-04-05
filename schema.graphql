@@ -1,0 +1,526 @@
+"""
+The @defer directive may be specified on a fragment spread to imply
+de-prioritization, that causes the fragment to be omitted in the initial
+response, and delivered as a subsequent response afterward. A query with @defer
+directive will cause the request to potentially return multiple responses, where
+non-deferred data is delivered in the initial response and data deferred
+delivered in a subsequent response. @include and @skip take precedence over @defer.
+"""
+directive @defer(if: Boolean = true, label: String) on FRAGMENT_SPREAD | INLINE_FRAGMENT
+
+"""
+The @specifiedBy built-in directive is used within the type system definition
+language to provide a scalar specification URL for specifying the behavior of
+custom scalar types.
+"""
+directive @specifiedBy(url: String!) on SCALAR
+
+type Content {
+  type: ContentType!
+  source: String!
+  id: String!
+  title: String!
+  releaseDate: Date
+  releaseYear: Year
+  adult: Boolean
+  originalLanguage: LanguageInfo
+  originalTitle: String
+  overview: String
+  runtime: Int
+  popularity: Float
+  voteAverage: Float
+  voteCount: Int
+  attributes: [ContentAttribute!]!
+  collections: [ContentCollection!]!
+  metadataSource: MetadataSource!
+  externalLinks: [ExternalLink!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ContentAttribute {
+  source: String!
+  key: String!
+  value: String!
+  metadataSource: MetadataSource!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ContentCollection {
+  type: String!
+  source: String!
+  id: String!
+  name: String!
+  metadataSource: MetadataSource!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum ContentType {
+  movie
+  tv_show
+  music
+  ebook
+  comic
+  audiobook
+  game
+  software
+  xxx
+}
+
+type ContentTypeAgg {
+  value: ContentType
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input ContentTypeFacetInput {
+  aggregate: Boolean
+  filter: [ContentType]
+}
+
+scalar Date
+
+scalar DateTime
+
+type Episodes {
+  label: String!
+  seasons: [Season!]!
+}
+
+type ExternalLink {
+  metadataSource: MetadataSource!
+  url: String!
+}
+
+enum FacetLogic {
+  and
+  or
+}
+
+enum FilesStatus {
+  no_info
+  single
+  multi
+  over_threshold
+}
+
+enum FileType {
+  archive
+  audio
+  data
+  document
+  image
+  software
+  subtitles
+  video
+}
+
+type GenreAgg {
+  value: String!
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input GenreFacetInput {
+  aggregate: Boolean
+  logic: FacetLogic
+  filter: [String!]
+}
+
+scalar Hash20
+
+enum Language {
+  ar
+  bs
+  bg
+  ca
+  zh
+  cs
+  da
+  nl
+  en
+  et
+  fi
+  fr
+  de
+  el
+  he
+  hi
+  hr
+  hu
+  is
+  id
+  it
+  ja
+  ko
+  lv
+  lt
+  mk
+  ml
+  no
+  fa
+  pl
+  pt
+  ro
+  ru
+  sk
+  sl
+  es
+  sr
+  sv
+  ta
+  th
+  tr
+  uk
+  vi
+  af
+  hy
+  az
+  eu
+  be
+  ce
+  co
+  ka
+  ku
+  mi
+  ms
+  mt
+  mn
+  sa
+  sm
+  so
+  cy
+  yi
+  zu
+}
+
+type LanguageAgg {
+  value: Language!
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input LanguageFacetInput {
+  aggregate: Boolean
+  filter: [Language!]
+}
+
+type LanguageInfo {
+  id: String!
+  name: String!
+}
+
+type MetadataSource {
+  key: String!
+  name: String!
+}
+
+type Mutation {
+  torrent: TorrentMutation!
+}
+
+type Query {
+  torrent: TorrentQuery!
+  torrentContent: TorrentContentQuery!
+  system: SystemQuery!
+}
+
+type ReleaseYearAgg {
+  value: Year
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input ReleaseYearFacetInput {
+  aggregate: Boolean
+  filter: [Year]
+}
+
+input SearchQueryInput {
+  queryString: String
+  limit: Int
+  offset: Int
+  totalCount: Boolean
+
+  """
+  hasNextPage if true, the search result will include the hasNextPage field, indicating if there are more results to fetch
+  """
+  hasNextPage: Boolean
+  cached: Boolean
+  aggregationBudget: Float
+}
+
+type Season {
+  season: Int!
+  episodes: [Int!]
+}
+
+type SuggestedTag {
+  name: String!
+  count: Int!
+}
+
+input SuggestTagsQueryInput {
+  prefix: String
+  exclusions: [String!]
+}
+
+type SystemQuery {
+  version: String!
+}
+
+type Torrent {
+  infoHash: Hash20!
+  name: String!
+  size: Int!
+  hasFilesInfo: Boolean!
+  singleFile: Boolean
+  extension: String
+  filesStatus: FilesStatus!
+  filesCount: Int
+  fileType: FileType
+  fileTypes: [FileType!]
+  files: [TorrentFile!]
+  sources: [TorrentSource!]!
+  seeders: Int
+  leechers: Int
+  tagNames: [String!]!
+  magnetUri: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type TorrentContent {
+  id: ID!
+  infoHash: Hash20!
+  torrent: Torrent!
+  contentType: ContentType
+  contentSource: String
+  contentId: String
+  content: Content
+  title: String!
+  languages: [LanguageInfo!]
+  episodes: Episodes
+  videoResolution: VideoResolution
+  videoSource: VideoSource
+  videoCodec: VideoCodec
+  video3d: Video3d
+  videoModifier: VideoModifier
+  releaseGroup: String
+  seeders: Int
+  leechers: Int
+  publishedAt: DateTime!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type TorrentContentAggregations {
+  contentType: [ContentTypeAgg!]
+  torrentSource: [TorrentSourceAgg!]
+  torrentTag: [TorrentTagAgg!]
+  torrentFileType: [TorrentFileTypeAgg!]
+  language: [LanguageAgg!]
+  genre: [GenreAgg!]
+  releaseYear: [ReleaseYearAgg!]
+  videoResolution: [VideoResolutionAgg!]
+  videoSource: [VideoSourceAgg!]
+}
+
+input TorrentContentFacetsInput {
+  contentType: ContentTypeFacetInput
+  torrentSource: TorrentSourceFacetInput
+  torrentTag: TorrentTagFacetInput
+  torrentFileType: TorrentFileTypeFacetInput
+  language: LanguageFacetInput
+  genre: GenreFacetInput
+  releaseYear: ReleaseYearFacetInput
+  videoResolution: VideoResolutionFacetInput
+  videoSource: VideoSourceFacetInput
+}
+
+enum TorrentContentOrderBy {
+  Relevance
+  PublishedAt
+  UpdatedAt
+  Size
+  Files
+  Seeders
+  Leechers
+  Name
+  InfoHash
+}
+
+input TorrentContentOrderByInput {
+  field: TorrentContentOrderBy!
+  descending: Boolean
+}
+
+type TorrentContentQuery {
+  search(query: SearchQueryInput, facets: TorrentContentFacetsInput, orderBy: [TorrentContentOrderByInput!]): TorrentContentSearchResult!
+}
+
+type TorrentContentSearchResult {
+  totalCount: Int!
+  totalCountIsEstimate: Boolean!
+
+  """hasNextPage is true if there are more results to fetch"""
+  hasNextPage: Boolean
+  items: [TorrentContent!]!
+  aggregations: TorrentContentAggregations!
+}
+
+type TorrentFile {
+  infoHash: Hash20!
+  index: Int!
+  path: String!
+  extension: String
+  fileType: FileType
+  size: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type TorrentFileTypeAgg {
+  value: FileType!
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input TorrentFileTypeFacetInput {
+  aggregate: Boolean
+  logic: FacetLogic
+  filter: [FileType!]
+}
+
+type TorrentMutation {
+  delete(infoHashes: [Hash20!]!): Void
+  putTags(infoHashes: [Hash20!]!, tagNames: [String!]!): Void
+  setTags(infoHashes: [Hash20!]!, tagNames: [String!]!): Void
+  deleteTags(infoHashes: [Hash20!], tagNames: [String!]): Void
+}
+
+type TorrentQuery {
+  suggestTags(query: SuggestTagsQueryInput): TorrentSuggestTagsResult!
+}
+
+type TorrentSource {
+  key: String!
+  name: String!
+  importId: String
+  seeders: Int
+  leechers: Int
+}
+
+type TorrentSourceAgg {
+  value: String!
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input TorrentSourceFacetInput {
+  aggregate: Boolean
+  logic: FacetLogic
+  filter: [String!]
+}
+
+type TorrentSuggestTagsResult {
+  suggestions: [SuggestedTag!]!
+}
+
+type TorrentTagAgg {
+  value: String!
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input TorrentTagFacetInput {
+  aggregate: Boolean
+  logic: FacetLogic
+  filter: [String!]
+}
+
+enum Video3d {
+  V3D
+  V3DSBS
+  V3DOU
+}
+
+enum VideoCodec {
+  H264
+  x264
+  x265
+  XviD
+  DivX
+  MPEG2
+  MPEG4
+}
+
+enum VideoModifier {
+  REGIONAL
+  SCREENER
+  RAWHD
+  BRDISK
+  REMUX
+}
+
+enum VideoResolution {
+  V360p
+  V480p
+  V540p
+  V576p
+  V720p
+  V1080p
+  V1440p
+  V2160p
+  V4320p
+}
+
+type VideoResolutionAgg {
+  value: VideoResolution
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input VideoResolutionFacetInput {
+  aggregate: Boolean
+  filter: [VideoResolution]
+}
+
+enum VideoSource {
+  CAM
+  TELESYNC
+  TELECINE
+  WORKPRINT
+  DVD
+  TV
+  WEBDL
+  WEBRip
+  BluRay
+}
+
+type VideoSourceAgg {
+  value: VideoSource
+  label: String!
+  count: Int!
+  isEstimate: Boolean!
+}
+
+input VideoSourceFacetInput {
+  aggregate: Boolean
+  filter: [VideoSource]
+}
+
+scalar Void
+
+scalar Year
+

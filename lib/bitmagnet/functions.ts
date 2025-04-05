@@ -140,16 +140,40 @@ const parseContentCounts = (data: GraphQLCountResponse): ContentCounts => {
 
 const validTypes: { [key in 'movie' | 'series']: string } = { movie: 'movie', series: 'tv_show' };
 
+enum TorrentContentOrderBy {
+    Relevance = 'Relevance',
+    PublishedAt = 'PublishedAt',
+    UpdatedAt = 'UpdatedAt',
+    Size = 'Size',
+    Files = 'Files',
+    Seeders = 'Seeders',
+    Leechers = 'Leechers',
+    Name = 'Name',
+    InfoHash = 'InfoHash',
+}
+
+
 export const bitmagnetSearch = async (queryString: string, type: 'movie' | 'series'): Promise<TorrentInfo[]> => {
     console.log(`Entering Bitmagnet GraphQL search with query: "${queryString}", Type: ${type}`);
     const baseUrl = Deno.env.get('BITMAGNET_URL');
 
-    if (!baseUrl) throw new Error('BITMAGNET_GRAPHQL_URL is not set in environment variables.');
+    if (!baseUrl) throw new Error('BITMAGNET_URL is not set in environment variables.');
 
     const contentType = validTypes[type];
     if (!contentType) throw new Error('Invalid type. Must be "movie" or "tv".');
 
+    const defaultSortField = TorrentContentOrderBy.Seeders;
+    const defaultSortDescending = true;
 
+    const sortFieldInput = Deno.env.get('BITMAGNET_SORT_FIELD') || defaultSortField;
+    const sortField = Object.values(TorrentContentOrderBy).includes(sortFieldInput as TorrentContentOrderBy)
+        ? sortFieldInput as TorrentContentOrderBy
+        : defaultSortField;
+    const sortDescending = (Deno.env.get('BITMAGNET_SORT_DESCENDING')?.toLowerCase() ?? String(defaultSortDescending)) === 'true';
+    console.log(`Sorting by: ${sortField}, Descending: ${sortDescending}`);
+
+    const searchLimit = parseInt(Deno.env.get('BITMAGNET_SEARCH_LIMIT') || '20', 10);
+    console.log(`Search Limit: ${searchLimit}, Using Cache: true`);
     const query = `
         query TorrentContentSearch($query: SearchQueryInput, $facets: TorrentContentFacetsInput, $orderBy: [TorrentContentOrderByInput!]) {
           torrentContent {
@@ -181,9 +205,10 @@ export const bitmagnetSearch = async (queryString: string, type: 'movie' | 'seri
 
     const variables = {
         query: {
-            queryString: queryString, 
-            limit: 10, 
+            queryString: queryString,
+            limit: searchLimit,
             offset: 0,
+            cached: true, 
         },
         facets: {
             contentType: {
@@ -191,7 +216,7 @@ export const bitmagnetSearch = async (queryString: string, type: 'movie' | 'seri
             },
         },
         orderBy: [
-            { field: 'Seeders', descending: true },
+            { field: sortField, descending: sortDescending },
         ],
     };
 

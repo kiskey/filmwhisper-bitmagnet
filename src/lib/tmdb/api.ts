@@ -3,7 +3,8 @@ export interface TmdbDetails {
     year?: number;
 }
 
-export async function getTmdbDetails(imdbId: string, apiKey: string, type: 'movie' | 'series'): Promise<TmdbDetails | null> {
+// Keep original function name internal
+async function _getTmdbDetails(imdbId: string, apiKey: string, type: 'movie' | 'series'): Promise<TmdbDetails | null> {
     if (!apiKey) {
         console.warn("TMDB_API_KEY is not provided. Skipping TMDB lookup.");
         return null;
@@ -26,8 +27,8 @@ export async function getTmdbDetails(imdbId: string, apiKey: string, type: 'movi
 
         if (results && results.length > 0) {
             const firstResult = results[0];
-            const title = firstResult.title || firstResult.name; 
-            const releaseDate = firstResult.release_date || firstResult.first_air_date; 
+            const title = firstResult.title || firstResult.name;
+            const releaseDate = firstResult.release_date || firstResult.first_air_date;
             const year = releaseDate ? new Date(releaseDate).getFullYear() : undefined;
 
             if (title) {
@@ -42,3 +43,8 @@ export async function getTmdbDetails(imdbId: string, apiKey: string, type: 'movi
         return null;
     }
 }
+
+// Export functions within an object
+export const tmdbApi = {
+    getTmdbDetails: _getTmdbDetails
+};

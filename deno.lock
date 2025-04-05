@@ -1,7 +1,49 @@
 {
   "version": "4",
   "specifiers": {
-    "npm:stremio-addon-sdk@*": "1.6.10"
+    "jsr:@std/assert@*": "1.0.12",
+    "jsr:@std/assert@^1.0.12": "1.0.12",
+    "jsr:@std/data-structures@^1.0.6": "1.0.6",
+    "jsr:@std/fs@^1.0.15": "1.0.15",
+    "jsr:@std/internal@^1.0.6": "1.0.6",
+    "jsr:@std/path@^1.0.8": "1.0.8",
+    "jsr:@std/testing@*": "1.0.10",
+    "jsr:@std/testing@^1.0.10": "1.0.10",
+    "npm:stremio-addon-sdk@*": "1.6.10",
+    "npm:stremio-addon-sdk@^1.6.10": "1.6.10"
+  },
+  "jsr": {
+    "@std/assert@1.0.12": {
+      "integrity": "08009f0926dda9cbd8bef3a35d3b6a4b964b0ab5c3e140a4e0351fbf34af5b9a",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/data-structures@1.0.6": {
+      "integrity": "76a7fd8080c66604c0496220a791860492ab21a04a63a969c0b9a0609bbbb760"
+    },
+    "@std/fs@1.0.15": {
+      "integrity": "c083fb479889d6440d768e498195c3fc499d426fbf9a6592f98f53884d1d3f41",
+      "dependencies": [
+        "jsr:@std/path"
+      ]
+    },
+    "@std/internal@1.0.6": {
+      "integrity": "9533b128f230f73bd209408bb07a4b12f8d4255ab2a4d22a1fd6d87304aca9a4"
+    },
+    "@std/path@1.0.8": {
+      "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
+    },
+    "@std/testing@1.0.10": {
+      "integrity": "8997bd0b0df020b81bf5eae103c66622918adeff7e45e96291c92a29dbf82cc1",
+      "dependencies": [
+        "jsr:@std/assert@^1.0.12",
+        "jsr:@std/data-structures",
+        "jsr:@std/fs",
+        "jsr:@std/internal",
+        "jsr:@std/path"
+      ]
+    }
   },
   "npm": {
     "accepts@1.3.8": {
@@ -642,6 +684,17 @@
     "https://deno.land/std@0.219.0/dotenv/load.ts": "587b342f0f6a3df071331fe6ba1c823729ab68f7d53805809475e486dd4161d7",
     "https://deno.land/std@0.219.0/dotenv/mod.ts": "0180eaeedaaf88647318811cdaa418cc64dc51fb08354f91f5f480d0a1309f7d",
     "https://deno.land/std@0.219.0/dotenv/parse.ts": "09977ff88dfd1f24f9973a338f0f91bbdb9307eb5ff6085446e7c423e4c7ba0c",
-    "https://deno.land/std@0.219.0/dotenv/stringify.ts": "0047ad7068289735d08964046aea267a750c141b494ca0e38831b89be6c020c2"
+    "https://deno.land/std@0.219.0/dotenv/stringify.ts": "0047ad7068289735d08964046aea267a750c141b494ca0e38831b89be6c020c2",
+    "https://deno.land/x/bencode@v0.1.2/mod.ts": "aafe7d9f563d602376cfd0bab1eefad77c76a68a099fa03b215cbaa74f39795e",
+    "https://deno.land/x/bencode@v0.1.2/src/decode.ts": "ac432e38ffb648507230f9a91e6b6ddb8bb2f3afecd3a70148f377ca8fec0d6d",
+    "https://deno.land/x/bencode@v0.1.2/src/encode.ts": "3c381ba86ad596e1f32e6c2b6789d25bd3ad2523ccf090a76dd35846c32ab28b",
+    "https://deno.land/x/bencode@v0.1.2/src/util.ts": "ce53b8024914052f931e42764b366ef531f4ffbd755fb036e4c0b1afd423edc7"
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@std/assert@^1.0.12",
+      "jsr:@std/testing@^1.0.10",
+      "npm:stremio-addon-sdk@^1.6.10"
+    ]
   }
 }

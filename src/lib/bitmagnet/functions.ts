@@ -8,10 +8,10 @@ export interface TorrentInfo {
     videoCodec?: string | null;
     videoSource?: string | null;
     languages: string[];
-    files?: { path: string; size: number; index: number }[]; 
+    files?: { path: string; size: number; index: number }[];
 }
 
-interface GraphQLTorrentItem {
+export interface GraphQLTorrentItem { // Exported for testing/typing
     title: string;
     torrent?: {
         magnetUri?: string;
@@ -21,17 +21,17 @@ interface GraphQLTorrentItem {
         files?: {
             path: string;
             size: number;
-            index: number; 
-            __typename?: string; 
+            index: number;
+            __typename?: string;
         }[];
     };
     videoResolution?: string;
-    videoCodec?: string | null; 
-    videoSource?: string | null; 
-    languages?: { name: string; __typename?: string }[] | null; 
+    videoCodec?: string | null;
+    videoSource?: string | null;
+    languages?: { name: string; __typename?: string }[] | null;
 }
 
-interface GraphQLSearchResponse {
+export interface GraphQLSearchResponse { // Exported for testing/typing
     data?: {
         torrentContent?: {
             search?: {
@@ -42,22 +42,22 @@ interface GraphQLSearchResponse {
     errors?: { message: string }[];
 }
 
-interface ContentCount {
+export interface ContentCount { // Export if needed elsewhere, or keep internal
     label: string;
     count: number;
 }
 
-interface ContentCounts {
+export interface ContentCounts { // Export this type
     [key: string]: ContentCount;
 }
 
-interface GraphQLContentAggregation {
+export interface GraphQLContentAggregation { // Exported for testing/typing
     value: string;
     label: string;
     count?: number;
 }
 
-interface GraphQLCountResponse {
+export interface GraphQLCountResponse { // Exported for testing/typing
     data?: {
         torrentContent?: {
             search?: {
@@ -70,7 +70,7 @@ interface GraphQLCountResponse {
     errors?: { message: string }[];
 }
 
-const TIMEOUT_TIME = Number(Deno.env.get('BITMAGNET_TIMEOUT')) || 5; 
+const TIMEOUT_TIME = Number(Deno.env.get('BITMAGNET_TIMEOUT')) || 5;
 
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -86,23 +86,23 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
     });
 };
 
-const parseGraphQLResults = (data: GraphQLSearchResponse): TorrentInfo[] => {
+export const parseGraphQLResults = (data: GraphQLSearchResponse): TorrentInfo[] => { // Export for testing
     const items = data?.data?.torrentContent?.search?.items || [];
 
     const torrents = items
         .filter((item: GraphQLTorrentItem): item is GraphQLTorrentItem & { torrent: Required<Pick<NonNullable<GraphQLTorrentItem['torrent']>, 'seeders'>> } =>
             (item.torrent?.seeders ?? 0) > 0
         )
-        .map((item): TorrentInfo => { 
+        .map((item): TorrentInfo => {
             const title = item.title;
             const magnetUrl = item.torrent?.magnetUri;
             const size = item.torrent?.size;
             const resolution = item.videoResolution ? item.videoResolution.replace(/^V/, '') : 'Unknown';
-            const seeders = item.torrent.seeders; 
+            const seeders = item.torrent.seeders;
             const peers = item.torrent?.leechers ?? 0;
-            const videoCodec = item.videoCodec; 
-            const videoSource = item.videoSource; 
-            const languages = item.languages?.map(lang => lang.name) || []; 
+            const videoCodec = item.videoCodec;
+            const videoSource = item.videoSource;
+            const languages = item.languages?.map(lang => lang.name) || [];
             const files = item.torrent?.files?.map(f => ({ path: f.path, size: f.size, index: f.index }));
 
             return {
@@ -112,17 +112,17 @@ const parseGraphQLResults = (data: GraphQLSearchResponse): TorrentInfo[] => {
                 resolution,
                 seeders,
                 peers,
-                videoCodec, 
-                videoSource, 
-                languages, 
-                files, 
+                videoCodec,
+                videoSource,
+                languages,
+                files,
             };
         });
 
     return torrents;
 };
 
-const parseContentCounts = (data: GraphQLCountResponse): ContentCounts => {
+export const parseContentCounts = (data: GraphQLCountResponse): ContentCounts => { // Export for testing
     const contentTypeAggs = data?.data?.torrentContent?.search?.aggregations?.contentType || [];
     const counts: ContentCounts = {};
 
@@ -153,7 +153,8 @@ enum TorrentContentOrderBy {
 }
 
 
-export const bitmagnetSearch = async (queryString: string, type: 'movie' | 'series'): Promise<TorrentInfo[]> => {
+// Keep original function name internal
+async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series'): Promise<TorrentInfo[]> {
     console.log(`Entering Bitmagnet GraphQL search with query: "${queryString}", Type: ${type}`);
     const baseUrl = Deno.env.get('BITMAGNET_URL');
 
@@ -208,7 +209,7 @@ export const bitmagnetSearch = async (queryString: string, type: 'movie' | 'seri
             queryString: queryString,
             limit: searchLimit,
             offset: 0,
-            cached: true, 
+            cached: true,
         },
         facets: {
             contentType: {
@@ -253,7 +254,7 @@ export const bitmagnetSearch = async (queryString: string, type: 'movie' | 'seri
             throw new Error(`GraphQL query errors: ${errorMessages}`);
         }
 
-        const results = parseGraphQLResults(responseData);
+        const results = parseGraphQLResults(responseData); // Use internal function
         console.log(`Found ${results.length} torrents for query: "${queryString}"`);
         return results;
     } catch (error) {
@@ -270,10 +271,11 @@ export const bitmagnetSearch = async (queryString: string, type: 'movie' | 'seri
 
 
 
-export const getContentCounts = async (): Promise<ContentCounts> => {
-    const baseUrl = Deno.env.get('BITMAGNET_URL');
+// Keep original function name internal
+async function _getContentCounts(): Promise<ContentCounts> {
+    const baseUrl = Deno.env.get('BITMAGNET_URL'); // Ensure baseUrl is defined inside
 
-    if (!baseUrl) throw new Error('BITMAGNET_GRAPHQL_URL is not set in environment variables.');
+    if (!baseUrl) throw new Error('BITMAGNET_URL is not set in environment variables.');
 
     const query = `
         query GetContentCounts {
@@ -291,15 +293,16 @@ export const getContentCounts = async (): Promise<ContentCounts> => {
         }
     `;
 
-    const requestOptions: RequestInit = {
+    const requestOptions: RequestInit = { // Ensure requestOptions is defined inside
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         },
-        body: JSON.stringify({ query }), 
+        body: JSON.stringify({ query }),
     };
 
+    // The try/catch block below handles the actual fetch and return/throw
     try {
         const response = await fetch(`${baseUrl}/graphql`, requestOptions);
 
@@ -328,4 +331,15 @@ export const getContentCounts = async (): Promise<ContentCounts> => {
         console.error('Error fetching content counts from Bitmagnet:', errorMessage);
         throw new Error(`Failed to fetch content counts from Bitmagnet: ${errorMessage}`);
     }
+} // End of _getContentCounts function
+
+// Export functions within an object - Defined at top level
+const bitmagnetFunctions = {
+    bitmagnetSearch: _bitmagnetSearch,
+    getContentCounts: _getContentCounts,
 };
+
+// Export the object correctly - At top level
+export { bitmagnetFunctions };
+
+// Removed the misplaced try/catch block and export definition from here

@@ -1,11 +1,9 @@
-import "https://deno.land/std@0.219.0/dotenv/load.ts";
-
 /**
  * Calls the /transfer/directdl endpoint using axios to get a stream link for a magnet URL.
  * Assumes the item is already cached (should be checked beforehand).
  * Returns the stream URL or null if an error occurs or the link is not found.
  */
-export async function getPremiumizeDirectDownloadLink(
+export async function getPremiumizeDirectDownloadLink( // Export directly
     apiKey: string | undefined,
     magnetUrl: string,
     searchQuery?: string
@@ -40,7 +38,7 @@ export async function getPremiumizeDirectDownloadLink(
                 if (seasonEpisodeMatch) {
                     const seasonNum = parseInt(seasonEpisodeMatch[1], 10);
                     const episodeNum = parseInt(seasonEpisodeMatch[2], 10);
-                    
+
                     const episodePattern = new RegExp(`S(0?${seasonNum})E(0?${episodeNum})`, 'i');
                     const episodePatternAlt = new RegExp(`${seasonNum}x(0?${episodeNum})`, 'i'); // Common alternative like 1x02
 
@@ -48,7 +46,7 @@ export async function getPremiumizeDirectDownloadLink(
                         if (item.stream_link && item.path && (episodePattern.test(item.path) || episodePatternAlt.test(item.path))) {
                             console.log(`[Premiumize] Found specific episode match: ${item.path}`);
                             bestMatch = item;
-                            break; 
+                            break;
                         }
                     }
                 }
@@ -80,38 +78,5 @@ export async function getPremiumizeDirectDownloadLink(
     } catch (error) {
         console.error(`[Premiumize] Error during fetch DirectDL API call:`, error);
         return null;
-    }
-}
-
-// --- Test Execution Block ---
-// deno run --allow-env --allow-net --allow-read lib/premiumize_directdl.ts
-if (import.meta.main) {
-    console.log("Running Premiumize DirectDL Test...");
-    const apiKey = Deno.env.get("PREMIUMIZE_API_KEY");
-    const magnetUrl = Deno.env.get("TEST_MAGNET_URL"); // Example: magnet:?xt=urn:btih:7e460ea6068b520fa6e96fe9f827a3f82972ad4f&dn=Reacher.S01...
-    const testQuery = "Reacher S01E02"; // Example query for testing matching logic
-
-    if (!apiKey) {
-        console.error("Error: PREMIUMIZE_API_KEY environment variable not set.");
-    } else if (!magnetUrl) {
-        console.error("Error: TEST_MAGNET_URL environment variable not set for testing.");
-    } else {
-        console.log(`Testing with Magnet: ${magnetUrl.substring(0, 80)}...`);
-        console.log(`Using Search Query for matching: "${testQuery}"`);
-        getPremiumizeDirectDownloadLink(apiKey, magnetUrl, testQuery)
-            .then(link => {
-                if (link) {
-                    console.log("\n--- Test Result ---");
-                    console.log("Successfully obtained stream link:");
-                    console.log(link);
-                } else {
-                    console.log("\n--- Test Result ---");
-                    console.log("Failed to obtain stream link (check logs above).");
-                }
-            })
-            .catch(err => {
-                console.error("\n--- Test Error ---");
-                console.error("An unexpected error occurred during the test:", err);
-            });
     }
 }

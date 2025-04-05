@@ -1,9 +1,10 @@
 export interface ParsedMagnetUri {
     infoHash?: string;
-    sources: string[]; 
+    sources: string[];
 }
 
-export function parseMagnetUri(magnetUri?: string): ParsedMagnetUri | null {
+// Keep original function name internal
+function _parseMagnetUri(magnetUri?: string): ParsedMagnetUri | null {
     if (!magnetUri || !magnetUri.startsWith('magnet:?')) {
         return null;
     }
@@ -11,15 +12,15 @@ export function parseMagnetUri(magnetUri?: string): ParsedMagnetUri | null {
     try {
         const params = new URLSearchParams(magnetUri.substring(magnetUri.indexOf('?') + 1));
         const infoHash = params.get('xt')?.match(/urn:btih:([a-fA-F0-9]{40})/)?.[1];
-        const sources = params.getAll('tr'); 
+        const sources = params.getAll('tr');
 
         if (!infoHash) {
             console.warn("Could not extract infoHash from magnet URI:", magnetUri);
-            return null; 
+            return null;
         }
 
         return {
-            infoHash: infoHash.toLowerCase(), 
+            infoHash: infoHash.toLowerCase(),
             sources: sources.filter(Boolean)
         };
     } catch (error) {
@@ -28,7 +29,8 @@ export function parseMagnetUri(magnetUri?: string): ParsedMagnetUri | null {
     }
 }
 
-export function findBestFileIndex(
+// Keep original function name internal
+function _findBestFileIndex(
     files?: { path: string; size: number; index: number }[],
     season?: number,
     episode?: number
@@ -63,9 +65,9 @@ export function findBestFileIndex(
     for (const file of files) {
         const extension = file.path.substring(file.path.lastIndexOf('.')).toLowerCase();
         if (videoExtensions.includes(extension)) {
-            
+
             if (regexPatterns && regexPatterns.some(regex => regex.test(file.path))) {
-                
+
                 if (!specificEpisodeFile || file.size > specificEpisodeFile.size) {
                     specificEpisodeFile = { index: file.index, size: file.size, path: file.path };
                 }
@@ -99,7 +101,8 @@ export function findBestFileIndex(
     return undefined;
 }
 
-export function formatBytes(bytes: number, decimals = 2): string {
+// Keep original function name internal
+function _formatBytes(bytes: number, decimals = 2): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
@@ -109,3 +112,10 @@ export function formatBytes(bytes: number, decimals = 2): string {
     const size = bytes / Math.pow(k, i);
     return (isNaN(size) ? 0 : parseFloat(size.toFixed(dm))) + ' ' + sizes[i];
 }
+
+// Export functions within an object
+export const torrentUtils = {
+    parseMagnetUri: _parseMagnetUri,
+    findBestFileIndex: _findBestFileIndex,
+    formatBytes: _formatBytes,
+};

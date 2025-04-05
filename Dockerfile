@@ -5,9 +5,7 @@ WORKDIR /app
 COPY deno.lock .
 COPY deno.json .
 
-COPY deps.ts .
-COPY main.ts .
-COPY lib ./lib
+COPY src/ .
 
 RUN deno cache main.ts --lock=deno.lock
 

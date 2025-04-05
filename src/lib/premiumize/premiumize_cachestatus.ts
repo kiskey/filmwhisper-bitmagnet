@@ -6,7 +6,7 @@ export interface PremiumizeCacheStatus {
     isCached: boolean;
     filename: string | null;
 }
-export async function checkPremiumizeCacheBulk(
+export async function checkPremiumizeCacheBulk( // Export directly
     apiKey: string,
     infoHashes: string[]
 ): Promise<Record<string, PremiumizeCacheStatus>> {
@@ -26,10 +26,10 @@ export async function checkPremiumizeCacheBulk(
         const response = await fetch(apiUrl);
         if (!response.ok) {
             console.error(`[Premiumize] Bulk API request failed with status ${response.status}: ${await response.text()}`);
-            return results; 
+            return results;
         }
 
-        const rawResponseText = await response.text(); 
+        const rawResponseText = await response.text();
         const data = JSON.parse(rawResponseText);
 
         if (data.status !== 'success' || !Array.isArray(data.response) || data.response.length !== infoHashes.length) {
@@ -49,7 +49,7 @@ export async function checkPremiumizeCacheBulk(
             } else {
                  console.log(`[Premiumize] Bulk Cache miss for ${hash}.`);
             }
-        } 
+        }
 
     } catch (error) {
         console.error(`[Premiumize] Error during bulk cache check API call:`, error instanceof Error ? error.message : error);

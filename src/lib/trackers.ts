@@ -14,7 +14,7 @@ async function fetchAndCacheTrackers(): Promise<string[] | null> {
         console.log("[Trackers] Fetch already in progress, awaiting result...");
         return fetchPromise;
     }
-    if (cachedTrackers) return Promise.resolve(cachedTrackers); 
+    if (cachedTrackers) return Promise.resolve(cachedTrackers);
 
     isFetching = true;
     fetchPromise = (async () => {
@@ -22,7 +22,7 @@ async function fetchAndCacheTrackers(): Promise<string[] | null> {
         try {
             const response = await fetch(TRACKER_URL);
             if (!response.ok) throw new Error(`Failed to fetch trackers: ${response.status} ${response.statusText}`);
-        
+
             const text = await response.text();
             const trackers = text
                 .split('\n')
@@ -39,7 +39,7 @@ async function fetchAndCacheTrackers(): Promise<string[] | null> {
             }
         } catch (error) {
             console.error("[Trackers] Error fetching tracker list:", error instanceof Error ? error.message : error);
-            return null; 
+            return null;
         } finally {
             isFetching = false;
         }
@@ -51,9 +51,16 @@ async function fetchAndCacheTrackers(): Promise<string[] | null> {
 /**
  * Returns the cached list of trackers. Fetches them if not already cached.
  */
-export async function getTrackers(): Promise<string[]> {
+// Keep original function name internal
+async function _getTrackers(): Promise<string[]> {
     const trackers = await fetchAndCacheTrackers();
     return trackers || [];
 }
 
+// Export function within an object
+export const trackerSource = {
+    getTrackers: _getTrackers,
+};
+
+// Initial fetch attempt (can run in background)
 fetchAndCacheTrackers();

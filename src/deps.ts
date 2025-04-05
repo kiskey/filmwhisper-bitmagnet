@@ -1,0 +1,1 @@
+export { addonBuilder, serveHTTP, type Stream } from 'stremio-addon-sdk';

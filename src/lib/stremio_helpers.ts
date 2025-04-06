@@ -5,6 +5,7 @@ import { torrentUtils, type ParsedMagnetUri } from './torrent.ts';
 import { trackerSource } from './trackers.ts'; 
 
 import { premiumizeApi, type PremiumizeCacheStatus } from './premiumize/premiumize.ts'; 
+import { type Config } from "../types.ts";
 
 export interface ParsedId {
     imdbId: string;
@@ -53,15 +54,15 @@ export function parseStremioId(args: { type: string; id: string }): ParsedId | n
 
 export async function fetchAndSearchTorrents(
     parsedId: ParsedId,
-    apiKey: string | undefined
+    config: Config 
 ): Promise<SearchResult | null> {
     const { imdbId, season, episode, searchType } = parsedId;
     let searchQuery = imdbId;
     let title: string | undefined;
     let year: number | undefined;
 
-    if (apiKey) {
-        const tmdbDetails = await tmdbApi.getTmdbDetails(imdbId, apiKey, searchType); 
+    if (config.tmdbApiKey) { 
+        const tmdbDetails = await tmdbApi.getTmdbDetails(imdbId, config.tmdbApiKey, searchType);
         if (tmdbDetails) {
             title = tmdbDetails.title;
             year = tmdbDetails.year;
@@ -83,14 +84,15 @@ export async function fetchAndSearchTorrents(
     }
 
     console.log(`Searching Bitmagnet for ${searchType} with query: "${searchQuery}"`);
-    let searchResults = await bitmagnetFunctions.bitmagnetSearch(searchQuery, searchType); 
+
+    let searchResults = await bitmagnetFunctions.bitmagnetSearch(searchQuery, searchType, config);
     console.log(`Found ${searchResults.length} potential streams from Bitmagnet for query: "${searchQuery}"`);
 
     if (searchResults.length === 0 && searchType === 'series' && season !== undefined && title) {
         const seasonPad = String(season).padStart(2, '0');
         const seasonQuery = `${title}${year ? ` ${year}` : ''} S${seasonPad}`;
         console.log(`Specific episode query yielded no results. Falling back to season search: "${seasonQuery}"`);
-        searchResults = await bitmagnetFunctions.bitmagnetSearch(seasonQuery, searchType); 
+        searchResults = await bitmagnetFunctions.bitmagnetSearch(seasonQuery, searchType, config);
         console.log(`Found ${searchResults.length} potential streams from Bitmagnet for season query: "${seasonQuery}"`);
     }
 
@@ -103,7 +105,7 @@ export async function fetchAndSearchTorrents(
 }
 
 async function processPremiumizeCandidate(
-    apiKey: string,
+    config: Config,
     torrent: TorrentInfo,
     cacheStatus: PremiumizeCacheStatus,
     parsedId: ParsedId,
@@ -122,7 +124,7 @@ async function processPremiumizeCandidate(
         localSearchQuery = `${localSearchQuery} S${seasonPad}E${episodePad}`;
     }
 
-    const directLink = await premiumizeApi.getPremiumizeDirectDownloadLink(apiKey, torrent.magnetUrl, localSearchQuery);
+    const directLink = await premiumizeApi.getPremiumizeDirectDownloadLink(config.premiumizeApiKey!, torrent.magnetUrl, localSearchQuery);
 
     if (directLink) {
         const details = [
@@ -147,19 +149,20 @@ async function processPremiumizeCandidate(
 export async function createStreamsFromTorrents(
     searchResults: TorrentInfo[],
     parsedId: ParsedId,
-    tmdbTitle?: string
+    tmdbTitle: string | undefined,
+    config: Config 
 ): Promise<Stream[]> {
     const { season, episode } = parsedId;
-    const apiKey = Deno.env.get('PREMIUMIZE_API_KEY');
-    const additionalTrackers = await trackerSource.getTrackers(); // Call via object
+    const premiumizeApiKey = config.premiumizeApiKey;
+    const additionalTrackers = await trackerSource.getTrackers(); 
 
     let premiumizeResultsMap: Record<string, PremiumizeCacheStatus> = {};
-    if (apiKey) {
+    if (premiumizeApiKey) {
         const infoHashesToCheck = searchResults
-            .map(torrent => torrentUtils.parseMagnetUri(torrent.magnetUrl)?.infoHash) // Call via object
+            .map(torrent => torrentUtils.parseMagnetUri(torrent.magnetUrl)?.infoHash)
             .filter((hash): hash is string => !!hash);
         if (infoHashesToCheck.length > 0) {
-            premiumizeResultsMap = await premiumizeApi.checkPremiumizeCacheBulk(apiKey, infoHashesToCheck); 
+            premiumizeResultsMap = await premiumizeApi.checkPremiumizeCacheBulk(premiumizeApiKey, infoHashesToCheck);
         }
     }
 
@@ -169,7 +172,7 @@ export async function createStreamsFromTorrents(
     for (const torrent of searchResults) {
         const infoHash = torrentUtils.parseMagnetUri(torrent.magnetUrl)?.infoHash;
 
-        if (!apiKey || !infoHash) {
+        if (!premiumizeApiKey || !infoHash) {
             fallbackTorrents.push(torrent);
             continue;
         }
@@ -183,7 +186,7 @@ export async function createStreamsFromTorrents(
     }
 
     const premiumizeStreamPromises = premiumizeCandidates.map(async ({ torrent, cacheStatus }) => {
-        const stream = await processPremiumizeCandidate(apiKey as string, torrent, cacheStatus, parsedId, tmdbTitle);
+        const stream = await processPremiumizeCandidate(config, torrent, cacheStatus, parsedId, tmdbTitle);
         if (!stream) {
             fallbackTorrents.push(torrent);
         }
@@ -193,7 +196,6 @@ export async function createStreamsFromTorrents(
     const premiumizeStreams = (await Promise.all(premiumizeStreamPromises))
                                 .filter((s: Stream | null): s is Stream => s !== null); 
 
-    // Now process the final list of fallback torrents
     const fallbackStreams = fallbackTorrents.map((torrent): Stream | null => {
         let parsedMagnet: ParsedMagnetUri | null = null;
         let infoHash: string | undefined = undefined; 
@@ -202,7 +204,7 @@ export async function createStreamsFromTorrents(
             parsedMagnet = torrentUtils.parseMagnetUri(torrent.magnetUrl); 
             if (!parsedMagnet) {
                 console.warn(`Skipping fallback stream creation for torrent with unparseable magnet: ${torrent.title || torrent.magnetUrl}`);
-                return null; // Skip this torrent
+                return null; 
             }
             infoHash = parsedMagnet.infoHash;
         } else {
@@ -255,6 +257,6 @@ export async function createStreamsFromTorrents(
         if (stream.url) return true; 
         if (stream.name === '[TORRENT] FW Bitmagnet' && stream.infoHash && stream.title) return true;
         console.warn(`Filtering out invalid stream: Name=${stream.name}, Title=${stream.title}, URL=${stream.url}, InfoHash=${stream.infoHash}`);
-        return false; // Otherwise, invalid stream
+        return false; 
     });
 }

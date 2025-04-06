@@ -1,43 +1,142 @@
-import { addonBuilder, serveHTTP, Stream } from './deps.ts';
-import "https://deno.land/std@0.219.0/dotenv/load.ts"; 
+import type { Manifest } from './deps.ts';
+import "https://deno.land/std@0.219.0/dotenv/load.ts";
 
-import { parseStremioId, fetchAndSearchTorrents, createStreamsFromTorrents } from './lib/stremio_helpers.ts';
+import { initializeSecretKey, decryptConfig, isKeyInitialized } from './lib/crypto.ts';
+import { serveConfigPage } from './handlers/configure.ts';
+import { handleGenerateTokenRequest } from './handlers/api.ts';
+import { handleStreamRequest } from './handlers/stream.ts';
+import type { Config } from './types.ts';
 
-const TMDB_API_KEY = Deno.env.get('TMDB_API_KEY');
-if (!TMDB_API_KEY) console.warn("TMDB_API_KEY environment variable not set. Title/Year lookup will be skipped.");
-
-const builder = new addonBuilder({
+const manifest: Manifest = {
     id: 'org.filmwhisper.bitmagnet',
-    version: '1.0.0',
+    version: '1.4.0', 
     name: 'FilmWhisper: Bitmagnet',
-    description: 'Provides movie and series streams from a Bitmagnet instance',
-    catalogs: [],
-    resources: ['stream'],
-    types: ['movie', 'series'],
-    idPrefixes: ['tt']
-});
+    description: 'Provides movie/series streams from Bitmagnet. Requires configuration.',
+    catalogs: [], resources: ['stream'], types: ['movie', 'series'], idPrefixes: ['tt'],
+    config: [
+        { key: 'bitmagnetUrl', type: 'text', title: 'Bitmagnet URL (e.g., http://192.168.1.10:3333)', required: true },
+        { key: 'tmdbApiKey', type: 'password', title: 'TMDB API Key', required: false },
+        { key: 'premiumizeApiKey', type: 'password', title: 'Premiumize API Key', required: false },
+        { key: 'bitmagnetTimeout', type: 'number', title: 'Advanced: Bitmagnet Timeout (seconds)', default: '30', required: false },
+        { key: 'bitmagnetSortField', type: 'select', title: 'Advanced: Bitmagnet Sort Field', default: 'Seeders', options: ['Seeders', 'Leechers', 'Size', 'PublishedAt', 'Relevance', 'Name'], required: false },
+        { key: 'bitmagnetSortDescending', type: 'checkbox', title: 'Advanced: Sort Descending', default: 'checked', required: false },
+        { key: 'bitmagnetSearchLimit', type: 'number', title: 'Advanced: Bitmagnet Search Limit (1-100)', default: '30', required: false },
+    ],
+    behaviorHints: { configurable: true }
+};
 
-builder.defineStreamHandler(async (args: { type: string; id: string }): Promise<{ streams: Stream[] }> => {
-    console.log("Stream handler invoked with args:", args);
+interface RouteHandler {
+    (request: Request, params?: Record<string, string | undefined>): Promise<Response> | Response;
+}
 
-    const parsedId = parseStremioId(args);
-    if (!parsedId) return Promise.resolve({ streams: [] });
+const routes: { pattern: URLPattern; method: string; handler: RouteHandler }[] = [
+    {
+        // Match /configure or /<jwe>/configure
+        pattern: new URLPattern({ pathname: '/:jwe?/configure' }),
+        method: 'GET',
+        handler: async (request, params) => {
+            const url = new URL(request.url);
+            const jwe = params?.jwe; 
+            let existingConfig: Config | null = null;
 
-    try {
-        const searchResult = await fetchAndSearchTorrents(parsedId, TMDB_API_KEY);
-        if (!searchResult || searchResult.torrents.length === 0) return Promise.resolve({ streams: [] });
+            if (jwe && isKeyInitialized()) { 
+                
+                existingConfig = await decryptConfig(jwe);
+                if (!existingConfig) {
+                    console.warn("Failed to decrypt token for pre-filling config page, serving blank form.");
+                } else {
+                    console.log("Successfully decrypted token, attempting to pre-fill form.");
+                    const bitmagnetUrlFromEnv = Deno.env.get("BITMAGNET_URL");
+                    if (bitmagnetUrlFromEnv) {
+                        console.log(`Overriding Bitmagnet URL from token with environment variable: ${bitmagnetUrlFromEnv}`);
+                        existingConfig.bitmagnetUrl = bitmagnetUrlFromEnv;
+                    }
+                }
+            } else if (jwe) {
+                 console.warn("Key not initialized or JWE missing, cannot pre-fill config page.");
+            }
+            return serveConfigPage(url, manifest, existingConfig);
+        },
+    },
+    {
+        pattern: new URLPattern({ pathname: '/api/generate-config-token' }),
+        method: 'POST',
+        handler: (request) => handleGenerateTokenRequest(request, manifest),
+    },
+    {
+        pattern: new URLPattern({ pathname: '/' }),
+        method: 'GET',
+        handler: (request) => Response.redirect(`${new URL(request.url).origin}/configure`, 302),
+    },
+    {
+        // Match /manifest.json OR /<jwe>/manifest.json
+        // Optional :jwe parameter
+        pattern: new URLPattern({ pathname: '/:jwe?/manifest.json' }),
+        method: 'GET',
+        handler: () => { 
+            try {
+                const manifestJson = JSON.stringify(manifest);
+                return new Response(manifestJson, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*', 
+                    },
+                });
+            } catch (err) {
+                console.error(`Error stringifying manifest:`, err);
+                return new Response('Internal server error generating manifest.', { status: 500 });
+            }
+        },
+    },
+    {
+        // Match /<jwe>/stream/<type>/<id>.json
+        pattern: new URLPattern({ pathname: '/:jwe/stream/:type/:id.json' }),
+        method: 'GET',
+        handler: (_request, params) => {
+            if (!params?.jwe || !params?.type || !params?.id) {
+                 console.error('Missing parameters in stream request path');
+                 return new Response('Bad Request: Malformed stream request path. Expected /<jwe>/stream/<type>/<id>.json', { status: 400 });
+            }
+            return handleStreamRequest(params.jwe, params.type, params.id);
+        },
+    },
+];
 
-        const streams = await createStreamsFromTorrents(searchResult.torrents, parsedId, searchResult.title);
+async function requestHandler(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const method = request.method;
+    console.log(`Incoming request: ${method} ${url.pathname}`);
 
-        console.log(`Returning ${streams.length} streams for ${args.type} ${args.id}`);
-        return Promise.resolve({ streams });
-
-    } catch (error) {
-        console.error(`Unexpected error processing stream request for ${args.type} ${args.id}:`, error instanceof Error ? error.message : error);
-        return Promise.resolve({ streams: [] });
+    for (const route of routes) {
+        if (request.method === route.method) {
+            const match = route.pattern.exec(request.url);
+            if (match) {
+                const params = match.pathname.groups;
+                console.log(`Matched route: ${route.pattern.pathname} with params:`, params);
+                try {
+                    return await route.handler(request, params);
+                } catch (error) {
+                     console.error(`Error in handler for ${method} ${url.pathname}:`, error);
+                     return new Response('Internal Server Error', { status: 500 });
+                }
+            }
+        }
     }
-});
+
+    console.log(`Request path "${url.pathname}" with method "${method}" did not match any known patterns.`);
+    return new Response('Not Found', { status: 404 });
+}
 
 const port = parseInt(Deno.env.get('PORT') || '7000', 10);
-console.log(`Addon server starting on http://localhost:${port}`);
-serveHTTP(builder.getInterface(), { port });
+
+initializeSecretKey().then((keyInitialized) => {
+    if (!keyInitialized) {
+        console.error("Server cannot start: Failed to initialize encryption key.");
+        Deno.exit(1); 
+    }
+    console.log(`Addon server starting. Configure at: http://localhost:${port}/configure`);
+    Deno.serve({ handler: requestHandler, port: port });
+}).catch(err => {
+    console.error("Failed to initialize server:", err);
+    Deno.exit(1);
+});

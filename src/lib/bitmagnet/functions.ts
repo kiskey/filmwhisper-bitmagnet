@@ -1,3 +1,5 @@
+import { Config } from "../../types.ts";
+
 export interface TorrentInfo {
     title: string;
     magnetUrl?: string;
@@ -11,7 +13,7 @@ export interface TorrentInfo {
     files?: { path: string; size: number; index: number }[];
 }
 
-export interface GraphQLTorrentItem { // Exported for testing/typing
+export interface GraphQLTorrentItem { 
     title: string;
     torrent?: {
         magnetUri?: string;
@@ -31,7 +33,7 @@ export interface GraphQLTorrentItem { // Exported for testing/typing
     languages?: { name: string; __typename?: string }[] | null;
 }
 
-export interface GraphQLSearchResponse { // Exported for testing/typing
+export interface GraphQLSearchResponse {
     data?: {
         torrentContent?: {
             search?: {
@@ -42,22 +44,22 @@ export interface GraphQLSearchResponse { // Exported for testing/typing
     errors?: { message: string }[];
 }
 
-export interface ContentCount { // Export if needed elsewhere, or keep internal
+export interface ContentCount { 
     label: string;
     count: number;
 }
 
-export interface ContentCounts { // Export this type
+export interface ContentCounts {
     [key: string]: ContentCount;
 }
 
-export interface GraphQLContentAggregation { // Exported for testing/typing
+export interface GraphQLContentAggregation { 
     value: string;
     label: string;
     count?: number;
 }
 
-export interface GraphQLCountResponse { // Exported for testing/typing
+export interface GraphQLCountResponse {
     data?: {
         torrentContent?: {
             search?: {
@@ -69,8 +71,6 @@ export interface GraphQLCountResponse { // Exported for testing/typing
     };
     errors?: { message: string }[];
 }
-
-const TIMEOUT_TIME = Number(Deno.env.get('BITMAGNET_TIMEOUT')) || 5;
 
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -122,7 +122,7 @@ export const parseGraphQLResults = (data: GraphQLSearchResponse): TorrentInfo[] 
     return torrents;
 };
 
-export const parseContentCounts = (data: GraphQLCountResponse): ContentCounts => { // Export for testing
+export const parseContentCounts = (data: GraphQLCountResponse): ContentCounts => { 
     const contentTypeAggs = data?.data?.torrentContent?.search?.aggregations?.contentType || [];
     const counts: ContentCounts = {};
 
@@ -154,11 +154,11 @@ enum TorrentContentOrderBy {
 
 
 // Keep original function name internal
-async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series'): Promise<TorrentInfo[]> {
+async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series', config: Config): Promise<TorrentInfo[]> {
     console.log(`Entering Bitmagnet GraphQL search with query: "${queryString}", Type: ${type}`);
-    const baseUrl = Deno.env.get('BITMAGNET_URL');
+    const baseUrl = config.bitmagnetUrl; 
 
-    if (!baseUrl) throw new Error('BITMAGNET_URL is not set in environment variables.');
+    if (!baseUrl) throw new Error('Bitmagnet URL is not set in configuration.');
 
     const contentType = validTypes[type];
     if (!contentType) throw new Error('Invalid type. Must be "movie" or "tv".');
@@ -166,14 +166,14 @@ async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series'): 
     const defaultSortField = TorrentContentOrderBy.Seeders;
     const defaultSortDescending = true;
 
-    const sortFieldInput = Deno.env.get('BITMAGNET_SORT_FIELD') || defaultSortField;
+    const sortFieldInput = config.bitmagnetSortField || defaultSortField;
     const sortField = Object.values(TorrentContentOrderBy).includes(sortFieldInput as TorrentContentOrderBy)
         ? sortFieldInput as TorrentContentOrderBy
         : defaultSortField;
-    const sortDescending = (Deno.env.get('BITMAGNET_SORT_DESCENDING')?.toLowerCase() ?? String(defaultSortDescending)) === 'true';
+    const sortDescending = config.bitmagnetSortDescending ?? defaultSortDescending;
     console.log(`Sorting by: ${sortField}, Descending: ${sortDescending}`);
 
-    const searchLimit = parseInt(Deno.env.get('BITMAGNET_SEARCH_LIMIT') || '20', 10);
+    const searchLimit = config.bitmagnetSearchLimit ?? 20; // Use config limit or default
     console.log(`Search Limit: ${searchLimit}, Using Cache: true`);
     const query = `
         query TorrentContentSearch($query: SearchQueryInput, $facets: TorrentContentFacetsInput, $orderBy: [TorrentContentOrderByInput!]) {
@@ -233,7 +233,7 @@ async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series'): 
     try {
         const response = await withTimeout(
             fetch(`${baseUrl}/graphql`, requestOptions),
-            (TIMEOUT_TIME * 1000) // seconds timeout
+            (config.bitmagnetTimeout * 1000)
         );
 
         if (!response.ok) {
@@ -254,7 +254,7 @@ async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series'): 
             throw new Error(`GraphQL query errors: ${errorMessages}`);
         }
 
-        const results = parseGraphQLResults(responseData); // Use internal function
+        const results = parseGraphQLResults(responseData); 
         console.log(`Found ${results.length} torrents for query: "${queryString}"`);
         return results;
     } catch (error) {
@@ -293,7 +293,7 @@ async function _getContentCounts(): Promise<ContentCounts> {
         }
     `;
 
-    const requestOptions: RequestInit = { // Ensure requestOptions is defined inside
+    const requestOptions: RequestInit = { 
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -302,7 +302,6 @@ async function _getContentCounts(): Promise<ContentCounts> {
         body: JSON.stringify({ query }),
     };
 
-    // The try/catch block below handles the actual fetch and return/throw
     try {
         const response = await fetch(`${baseUrl}/graphql`, requestOptions);
 
@@ -331,15 +330,11 @@ async function _getContentCounts(): Promise<ContentCounts> {
         console.error('Error fetching content counts from Bitmagnet:', errorMessage);
         throw new Error(`Failed to fetch content counts from Bitmagnet: ${errorMessage}`);
     }
-} // End of _getContentCounts function
+}
 
-// Export functions within an object - Defined at top level
 const bitmagnetFunctions = {
     bitmagnetSearch: _bitmagnetSearch,
     getContentCounts: _getContentCounts,
 };
 
-// Export the object correctly - At top level
 export { bitmagnetFunctions };
-
-// Removed the misplaced try/catch block and export definition from here

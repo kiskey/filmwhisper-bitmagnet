@@ -1,5 +1,5 @@
-import type { Manifest } from '../deps.ts';
-import type { Config, ManifestConfigItem } from '../types.ts';
+import type { Manifest, ManifestConfigType } from '../deps.ts';
+import type { Config } from '../types.ts';
 import { encryptConfig, isKeyInitialized } from '../lib/crypto.ts';
 
 export async function handleGenerateTokenRequest(request: Request, manifest: Manifest): Promise<Response> {
@@ -9,7 +9,7 @@ export async function handleGenerateTokenRequest(request: Request, manifest: Man
     try {
         const formData = await request.formData();
         const getConfigDefault = (key: string, fallback: string): string => {
-            return manifest.config?.find((c: ManifestConfigItem) => c.key === key)?.default || fallback;
+            return manifest.config?.find((c: ManifestConfigType) => c.key === key)?.default || fallback;
         };
         const bitmagnetUrlFromEnv = Deno.env.get("BITMAGNET_URL");
         const config: Config = {

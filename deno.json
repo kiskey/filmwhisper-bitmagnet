@@ -3,6 +3,7 @@
     "dev": "deno run --allow-env --allow-read --allow-net --watch src/main.ts"
   },
   "imports": {
-    "stremio-addon-sdk": "npm:stremio-addon-sdk@^1.6.10"
+    "stremio-addon-sdk": "jsr:@mkcfdc/stremio-addon-sdk@^0.1.2",
+    "jose": "https://deno.land/x/jose@v5.2.3/index.ts"
   }
 }

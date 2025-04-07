@@ -1,5 +1,5 @@
-import type { Manifest } from '../deps.ts';
-import type { Config, ManifestConfigItem } from '../types.ts';
+import type { Manifest, ManifestConfigType } from '../deps.ts';
+import type { Config } from '../types.ts';
 import { isKeyInitialized } from '../lib/crypto.ts';
 
 export function serveConfigPage(
@@ -13,7 +13,7 @@ export function serveConfigPage(
     let formHtml = '';
 
     // Build form fields from manifest.config
-    manifest.config?.forEach((item: ManifestConfigItem) => {
+    manifest.config?.forEach((item: ManifestConfigType) => {
         const requiredLabel = item.required ? ' (Required)' : ' (Optional)';
         const inputId = `config_${item.key}`;
         let valueToSet: string | undefined = undefined;

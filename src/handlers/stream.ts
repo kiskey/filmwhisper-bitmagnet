@@ -1,6 +1,11 @@
 import type { Stream } from '../deps.ts';
 import { decryptConfig, isKeyInitialized } from '../lib/crypto.ts';
 import { parseStremioId, fetchAndSearchTorrents, createStreamsFromTorrents } from '../lib/stremio_helpers.ts';
+import { getKv } from "../lib/kv_store.ts"; 
+
+const CACHE_PREFIX_STREAM = "stream_";
+const CACHE_TTL_STREAM_SECONDS = 60 * 60; 
+const CACHE_TTL_EMPTY_SECONDS = 5 * 60;  
 
 // Handles stream requests: /<jwe>/stream/:type/:id.json
 export async function handleStreamRequest(jwe: string, type: string, rawId: string): Promise<Response> {
@@ -15,11 +20,9 @@ export async function handleStreamRequest(jwe: string, type: string, rawId: stri
         return new Response('Invalid or expired configuration token.', { status: 400 });
     }
 
-    // Decode the ID component from the URL path
     const id = decodeURIComponent(rawId);
     console.log(`Decoded stream request: type=${type}, id=${id}`);
 
-    // Manually call stream logic with the decoded ID
     const parsedId = parseStremioId({ type, id });
     if (!parsedId) {
         console.error(`Could not parse stream ID: type=${type}, id=${id}`);
@@ -34,21 +37,42 @@ export async function handleStreamRequest(jwe: string, type: string, rawId: stri
     }
     // --- END: Override with Env Var ---
 
+    const cacheKey = [
+        CACHE_PREFIX_STREAM + parsedId.imdbId,
+        parsedId.season ?? "nosn", // Use "nosn" if season is null/undefined
+        parsedId.episode ?? "noep" // Use "noep" if episode is null/undefined
+    ];
+    const logIdentifier = `${type} ${id} (${parsedId.imdbId} S${parsedId.season ?? '-'}E${parsedId.episode ?? '-'})`; 
+
     try {
+        const kv = await getKv(); 
+        const cachedResult = await kv.get<Stream[]>(cacheKey);
+
+        if (cachedResult.value !== null) {
+            console.log(`Cache hit for ${logIdentifier}. Returning ${cachedResult.value.length} cached streams.`);
+            const responseBody = JSON.stringify({ streams: cachedResult.value });
+            return new Response(responseBody, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        console.log(`Cache miss for ${logIdentifier}. Fetching torrents...`);
         const searchResult = await fetchAndSearchTorrents(parsedId, config);
+
         let streams: Stream[] = [];
         if (searchResult && searchResult.torrents.length > 0) {
             streams = await createStreamsFromTorrents(searchResult.torrents, parsedId, searchResult.title, config);
+            console.log(`Found ${streams.length} streams for ${logIdentifier}. Caching result.`);
+            await kv.set(cacheKey, streams, { expireIn: CACHE_TTL_STREAM_SECONDS * 1000 }); 
         } else {
-             console.log(`No torrents found by fetchAndSearchTorrents for ${parsedId.imdbId}`);
+            console.log(`No torrents found by fetchAndSearchTorrents for ${logIdentifier}`);
+            await kv.set(cacheKey, [], { expireIn: CACHE_TTL_EMPTY_SECONDS * 1000 });
         }
-        console.log(`Returning ${streams.length} streams for ${type} ${id}`);
-        // Format response according to Stremio spec
+
+        console.log(`Returning ${streams.length} streams for ${logIdentifier}`);
         const responseBody = JSON.stringify({ streams: streams });
-        // Add CORS header for stream responses
         return new Response(responseBody, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+
     } catch (err) {
-        console.error(`Error processing stream request for ${type} ${id}:`, err);
+        console.error(`Error processing stream request for ${logIdentifier}:`, err);
         return new Response("Internal server error during stream processing.", { status: 500 });
     }
 }

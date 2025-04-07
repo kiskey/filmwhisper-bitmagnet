@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --allow-env --allow-read --allow-net --watch src/main.ts"
+    "dev": "deno run --unstable-kv --allow-env --allow-read --allow-write --allow-net --watch src/main.ts"
   },
   "imports": {
     "stremio-addon-sdk": "jsr:@mkcfdc/stremio-addon-sdk@^0.1.2",

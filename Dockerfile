@@ -11,4 +11,4 @@ RUN deno cache main.ts --lock=deno.lock
 
 EXPOSE 7000
 
-CMD ["deno", "run", "--allow-env", "--allow-read", "--allow-net", "main.ts"]
+CMD ["deno", "run", "--unstable-kv", "--allow-env", "--allow-write", "--allow-read", "--allow-net", "main.ts"]

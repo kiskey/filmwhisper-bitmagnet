@@ -5,6 +5,7 @@ import { initializeSecretKey, decryptConfig, isKeyInitialized } from './lib/cryp
 import { serveConfigPage } from './handlers/configure.ts';
 import { handleGenerateTokenRequest } from './handlers/api.ts';
 import { handleStreamRequest } from './handlers/stream.ts';
+import { closeKv } from "./lib/kv_store.ts";
 import type { Config } from './types.ts';
 
 const manifest: Manifest = {
@@ -140,3 +141,18 @@ initializeSecretKey().then((keyInitialized) => {
     console.error("Failed to initialize server:", err);
     Deno.exit(1);
 });
+
+// Gracefully close the KV store on shutdown signals.
+const handleShutdown = async () => {
+    try {
+      await closeKv();
+      console.log('Closed Kv.');
+      console.log('Closing Application');
+      Deno.exit(1);
+    } catch (error) {
+      console.error("Error during shutdown:", error);
+    }
+  };
+  
+  Deno.addSignalListener('SIGTERM', handleShutdown);
+  Deno.addSignalListener('SIGINT', handleShutdown);

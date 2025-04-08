@@ -39,8 +39,8 @@ export async function handleStreamRequest(jwe: string, type: string, rawId: stri
 
     const cacheKey = [
         CACHE_PREFIX_STREAM + parsedId.imdbId,
-        parsedId.season ?? "nosn", // Use "nosn" if season is null/undefined
-        parsedId.episode ?? "noep" // Use "noep" if episode is null/undefined
+        parsedId.season ?? "nosn",
+        parsedId.episode ?? "noep"
     ];
     const logIdentifier = `${type} ${id} (${parsedId.imdbId} S${parsedId.season ?? '-'}E${parsedId.episode ?? '-'})`; 
 

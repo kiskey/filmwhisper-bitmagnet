@@ -4,7 +4,7 @@
 
 # Ignore environment files (should be passed via Docker env vars)
 .env*
-src/cache/*
+src/cache/cache*
 
 # Ignore node_modules if any JS dependencies are installed differently
 node_modules

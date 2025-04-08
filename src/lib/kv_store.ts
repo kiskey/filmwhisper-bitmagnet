@@ -3,6 +3,18 @@ let kvPromise: Promise<Deno.Kv> | null = null;
 
 const kvFile = new URL('../cache/cache.sqlite', import.meta.url).pathname;
 
+const cacheDir = new URL('../cache', import.meta.url).pathname;
+try {
+  await Deno.stat(cacheDir);
+} catch (err) {
+  if (err instanceof Deno.errors.NotFound) {
+    await Deno.mkdir(cacheDir, { recursive: true });
+    console.log("Cache directory created:", cacheDir);
+  } else {
+    throw err;
+  }
+}
+
 /**
  * Opens and returns the Deno KV store instance.
  * Caches the instance and the promise for subsequent calls.

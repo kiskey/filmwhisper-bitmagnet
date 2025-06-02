@@ -140,16 +140,17 @@ export const parseContentCounts = (data: GraphQLCountResponse): ContentCounts =>
 
 const validTypes: { [key in 'movie' | 'series']: string } = { movie: 'movie', series: 'tv_show' };
 
+// FIX: Updated enum values to match snake_case from Bitmagnet GraphQL schema
 enum TorrentContentOrderBy {
-    Relevance = 'Relevance',
-    PublishedAt = 'PublishedAt',
-    UpdatedAt = 'UpdatedAt',
-    Size = 'Size',
-    Files = 'Files',
-    Seeders = 'Seeders',
-    Leechers = 'Leechers',
-    Name = 'Name',
-    InfoHash = 'InfoHash',
+    Relevance = 'relevance',
+    PublishedAt = 'published_at',
+    UpdatedAt = 'updated_at',
+    Size = 'size',
+    Files = 'files_count', // Corrected to 'files_count' as per schema
+    Seeders = 'seeders',
+    Leechers = 'leechers',
+    Name = 'name',
+    InfoHash = 'info_hash',
 }
 
 
@@ -176,7 +177,6 @@ async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series', c
     const searchLimit = config.bitmagnetSearchLimit ?? 20; // Use config limit or default
     console.log(`Search Limit: ${searchLimit}, Using Cache: true`);
 
-    // Updated GraphQL query to use the 'input' argument
     const query = `
         query TorrentContentSearch($input: TorrentContentSearchQueryInput!) {
             torrentContent {
@@ -206,7 +206,6 @@ async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series', c
         }
     `;
 
-    // Updated variables object to match the 'input' argument structure
     const variables = {
         input: {
             queryString: queryString,
@@ -279,7 +278,6 @@ async function _getContentCounts(): Promise<ContentCounts> {
 
     if (!baseUrl) throw new Error('BITMAGNET_URL is not set in environment variables.');
 
-    // Updated GraphQL query to use the 'input' argument
     const query = `
         query GetContentCounts($input: TorrentContentSearchQueryInput!) {
             torrentContent {
@@ -296,10 +294,9 @@ async function _getContentCounts(): Promise<ContentCounts> {
         }
     `;
 
-    // Updated variables object to match the 'input' argument structure
     const variables = {
         input: {
-            limit: 0, // Limit can be 0 when only aggregations are needed
+            limit: 0, 
             facets: {
                 contentType: {
                     aggregate: true,

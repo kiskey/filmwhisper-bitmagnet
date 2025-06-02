@@ -175,50 +175,53 @@ async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series', c
 
     const searchLimit = config.bitmagnetSearchLimit ?? 20; // Use config limit or default
     console.log(`Search Limit: ${searchLimit}, Using Cache: true`);
+
+    // Updated GraphQL query to use the 'input' argument
     const query = `
-        query TorrentContentSearch($query: SearchQueryInput, $facets: TorrentContentFacetsInput, $orderBy: [TorrentContentOrderByInput!]) {
-          torrentContent {
-            search(query: $query, facets: $facets, orderBy: $orderBy) {
-              items {
-                title
-                torrent {
-                  magnetUri
-                  size
-                  seeders
-                  leechers
-                  files {
-                    path
-                    size
-                    index
-                  }
+        query TorrentContentSearch($input: TorrentContentSearchQueryInput!) {
+            torrentContent {
+                search(input: $input) {
+                    items {
+                        title
+                        torrent {
+                            magnetUri
+                            size
+                            seeders
+                            leechers
+                            files {
+                                path
+                                size
+                                index
+                            }
+                        }
+                        videoResolution
+                        videoCodec # Request video codec
+                        videoSource # Request video source
+                        languages { # Request languages
+                            name
+                        }
+                    }
                 }
-                videoResolution
-                videoCodec # Request video codec
-                videoSource # Request video source
-                languages { # Request languages
-                  name
-                }
-              }
             }
-          }
         }
     `;
 
+    // Updated variables object to match the 'input' argument structure
     const variables = {
-        query: {
+        input: {
             queryString: queryString,
             limit: searchLimit,
             offset: 0,
             cached: true,
-        },
-        facets: {
-            contentType: {
-                filter: [contentType],
+            facets: {
+                contentType: {
+                    filter: [contentType],
+                },
             },
+            orderBy: [
+                { field: sortField, descending: sortDescending },
+            ],
         },
-        orderBy: [
-            { field: sortField, descending: sortDescending },
-        ],
     };
 
     const requestOptions: RequestInit = {
@@ -270,28 +273,40 @@ async function _bitmagnetSearch(queryString: string, type: 'movie' | 'series', c
 };
 
 
-
 // Keep original function name internal
 async function _getContentCounts(): Promise<ContentCounts> {
     const baseUrl = Deno.env.get('BITMAGNET_URL'); // Ensure baseUrl is defined inside
 
     if (!baseUrl) throw new Error('BITMAGNET_URL is not set in environment variables.');
 
+    // Updated GraphQL query to use the 'input' argument
     const query = `
-        query GetContentCounts {
-          torrentContent {
-            search(query: { limit: 0 }, facets: { contentType: { aggregate: true } }) {
-              aggregations {
-                contentType {
-                  value
-                  label
-                  count
+        query GetContentCounts($input: TorrentContentSearchQueryInput!) {
+            torrentContent {
+                search(input: $input) {
+                    aggregations {
+                        contentType {
+                            value
+                            label
+                            count
+                        }
+                    }
                 }
-              }
             }
-          }
         }
     `;
+
+    // Updated variables object to match the 'input' argument structure
+    const variables = {
+        input: {
+            limit: 0, // Limit can be 0 when only aggregations are needed
+            facets: {
+                contentType: {
+                    aggregate: true,
+                },
+            },
+        },
+    };
 
     const requestOptions: RequestInit = { 
         method: 'POST',
@@ -299,7 +314,7 @@ async function _getContentCounts(): Promise<ContentCounts> {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, variables }),
     };
 
     try {

@@ -4,13 +4,17 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: # Allows manual triggering from the GitHub Actions UI
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # 'packages: write' is still useful if you ever decide to push to GHCR in addition or instead
+      # 'packages: write' is typically for GitHub Container Registry (ghcr.io)
+      # While not strictly needed for Docker Hub, it doesn't hurt and
+      # might be useful if you later decide to push to both or ghcr.io.
+      packages: write 
 
     steps:
       - name: Checkout repository
@@ -28,11 +32,13 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: . # Assumes your Dockerfile is in the root of the repository
           push: true
-          # IMPORTANT: Replace YOUR_DOCKERHUB_USERNAME and YOUR_REPO_NAME
+          # Define multiple tags: 'latest' and a tag based on the commit SHA
+          # Replace 'YOUR_DOCKERHUB_USERNAME' with your actual Docker Hub username
+          # Replace 'filmwhisper-bitmagnet' if your Docker Hub repository name is different
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/filmwhisper-bitmagnet:latest # Using your actual repo name
-            ${{ secrets.DOCKER_USERNAME }}/filmwhisper-bitmagnet:${{ github.sha }} # Add a tag with the commit SHA for versioning
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ secrets.DOCKER_USERNAME }}/filmwhisper-bitmagnet:latest
+            ${{ secrets.DOCKER_USERNAME }}/filmwhisper-bitmagnet:${{ github.sha }}
+          cache-from: type=gha # Cache layers from previous GitHub Actions runs
+          cache-to: type=gha,mode=max # Store new layers to GitHub Actions cache for future runs

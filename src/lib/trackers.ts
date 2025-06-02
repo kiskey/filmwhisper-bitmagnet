@@ -1,3 +1,9 @@
+// trackers.ts (or the relevant section in functions.ts)
+
+// NOTE: You might remove these 'assert' imports if you're not keeping the unit tests in this file.
+// If you are keeping tests, make sure they are conditional (e.g., wrapped in if (Deno.test))
+// import { assertEquals, assert, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
+
 const TRACKER_URL = "https://raw.githubusercontent.com/ngosang/trackerslist/refs/heads/master/trackers_best.txt";
 
 let cachedTrackers: string[] | null = null;
@@ -9,13 +15,35 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
     let timeoutId: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
         timeoutId = setTimeout(() => {
-            reject(new Error(`Fetch timed out after ${ms} ms`));
+            reject(new Error(`Operation timed out after ${ms} ms`)); // Changed message for clarity
         }, ms);
     });
     return Promise.race([promise, timeoutPromise]).finally(() => {
         clearTimeout(timeoutId);
     });
 };
+
+/**
+ * NEW FUNCTION: Checks basic internet connectivity by fetching a common URL.
+ */
+async function checkInternetConnectivity(): Promise<boolean> {
+    console.log("[Connectivity Check] Checking internet connectivity...");
+    try {
+        const testUrl = "https://www.google.com/"; // A highly reliable URL for a quick check
+        const response = await withTimeout(fetch(testUrl, { method: 'HEAD' }), 3000); // HEAD request is faster, 3 sec timeout
+
+        if (response.ok) {
+            console.log("[Connectivity Check] Internet connectivity confirmed.");
+            return true;
+        } else {
+            console.warn(`[Connectivity Check] Failed to reach ${testUrl}: HTTP ${response.status}`);
+            return false;
+        }
+    } catch (error) {
+        console.error("[Connectivity Check] Internet connectivity test failed:", error instanceof Error ? error.message : error);
+        return false;
+    }
+}
 
 /**
  * Fetches the tracker list from the predefined URL, caches it, and returns it.
@@ -41,10 +69,9 @@ async function fetchAndCacheTrackers(): Promise<string[] | null> {
     fetchPromise = (async () => {
         console.log(`[Trackers] Initiating fetch from ${TRACKER_URL}...`);
         try {
-            // Apply a timeout to the fetch operation
             const response = await withTimeout(
                 fetch(TRACKER_URL),
-                5000 // 5 seconds timeout, adjust as needed
+                30000 // 30 seconds timeout
             );
 
             if (!response.ok) {
@@ -59,7 +86,6 @@ async function fetchAndCacheTrackers(): Promise<string[] | null> {
 
             if (trackers.length > 0) {
                 console.log(`[Trackers] Successfully fetched and cached ${trackers.length} trackers.`);
-                // **NEW LOGGING ADDED HERE**
                 trackers.forEach(tracker => console.log(`  - ${tracker}`)); 
                 cachedTrackers = trackers; // Cache the successful result
                 return trackers;
@@ -94,4 +120,23 @@ export const trackerSource = {
 };
 
 // Initial fetch attempt (can run in background, but its state management is crucial)
-fetchAndCacheTrackers();
+// This entire block should be executed at application startup.
+if (import.meta.main) {
+    // Perform connectivity check first
+    checkInternetConnectivity().then(isConnected => {
+        if (isConnected) {
+            console.log("[Startup] Proceeding with tracker fetch...");
+            fetchAndCacheTrackers(); // Then proceed with tracker fetch
+        } else {
+            console.warn("[Startup] Internet connectivity not confirmed. Tracker fetch might fail.");
+            // You might still call fetchAndCacheTrackers here if you want it to attempt anyway,
+            // or explicitly skip it if you want to prevent unnecessary timeouts.
+            // For now, let's still call it to get its specific error message if it fails.
+            fetchAndCacheTrackers();
+        }
+    });
+}
+
+// --- Test Section (Keep or remove as per your project structure) ---
+// ... (Your unit tests for fetchAndCacheTrackers would go here,
+//      making sure to mock the new checkInternetConnectivity if needed for those tests.)
